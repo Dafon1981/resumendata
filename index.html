@@ -3,118 +3,234 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat con la Base de Datos de Recepción</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
+    <title>ResumenData - Reportes</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .chat-container { width: 90%; max-width: 600px; height: 80vh; background: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1 ); display: flex; flex-direction: column; }
-        #chat-window { flex-grow: 1; overflow-y: auto; padding: 20px; }
-        .message { margin-bottom: 15px; padding: 10px 15px; border-radius: 18px; max-width: 80%; line-height: 1.4; }
-        .user-message { background-color: #007bff; color: white; align-self: flex-end; margin-left: auto; }
-        .ia-message { background-color: #e9e9eb; color: #333; align-self: flex-start; }
-        .error-message { background-color: #ffebee; color: #c62828; border: 1px solid #c62828; }
-        #input-area { display: flex; padding: 15px; border-top: 1px solid #ddd; }
-        #user-input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; font-size: 16px; }
-        #send-button { background: #007bff; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; margin-left: 10px; font-size: 20px; cursor: pointer; }
-        pre { background-color: #2d2d2d; color: #f8f8f2; padding: 10px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+        :root {
+            --primary-color: #005A9C;
+            --secondary-color: #007bff;
+            --background-color: #f0f2f5;
+            --surface-color: #ffffff;
+            --text-color: #333;
+            --header-bg-color: #001f3f;
+            --header-text-color: #ffffff;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background-color );
+            color: var(--text-color);
+        }
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--header-bg-color);
+            color: var(--header-text-color);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 1.5em;
+            margin: 0;
+        }
+        .date-range {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            font-weight: 500;
+        }
+        .main-content {
+            background-color: var(--surface-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .chart-container {
+            position: relative;
+            height: 40vh;
+            width: 100%;
+        }
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #004a80;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        /* Estilos del Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: var(--surface-color);
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .form-group input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
 
-<div class="chat-container">
-    <div id="chat-window">
-        <div class="message ia-message">Hola, soy tu asistente de base de datos. ¿Qué información necesitas de la tabla de registros?</div>
+    <div class="app-container">
+        <header class="header">
+            <h1>ResumenData</h1>
+            <span id="current-user"></span>
+        </header>
+
+        <main class="main-content">
+            <div class="date-range" id="date-range-display">Semana Actual: 08 Abr - 12 Abr</div>
+            <div class="chart-container">
+                <canvas id="mainChart"></canvas>
+            </div>
+            <div class="actions">
+                <button class="btn btn-primary" id="openReportModal">Reporte</button>
+            </div>
+        </main>
     </div>
-    <div id="input-area">
-        <input type="text" id="user-input" placeholder="Ej: busca al paciente Juan Perez...">
-        <button id="send-button">→</button>
+
+    <!-- Modal para seleccionar fechas del reporte -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Generar Reporte</div>
+            <div class="form-group">
+                <label for="startDate">Fecha de Inicio</label>
+                <input type="date" id="startDate">
+            </div>
+            <div class="form-group">
+                <label for="endDate">Fecha de Término</label>
+                <input type="date" id="endDate">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelReport">Cancelar</button>
+                <button class="btn btn-primary" id="generateReport">Generar</button>
+            </div>
+        </div>
     </div>
-</div>
 
-<script>
-    // Tus claves de Supabase (¡estas son públicas y seguras de poner aquí!)
-    const supabaseUrl = 'https://esiklpxyectbekxvajnw.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey );
+    <!-- Contenedor para el reporte imprimible (inicialmente oculto) -->
+    <div id="printable-report" style="display:none;">
+        <!-- El contenido se generará con JavaScript -->
+    </div>
 
-    const chatWindow = document.getElementById('chat-window');
-    const userInput = document.getElementById('user-input');
-    const sendButton = document.getElementById('send-button');
+    <script>
+        // En el próximo paso, aquí irá toda la lógica de JavaScript
+        // para conectar con Supabase, generar gráficos y reportes.
+        
+        // Lógica básica para abrir y cerrar el modal
+        const reportModal = document.getElementById('reportModal');
+        const openReportModalBtn = document.getElementById('openReportModal');
+        const cancelReportBtn = document.getElementById('cancelReport');
 
-    sendButton.addEventListener('click', handleUserMessage);
-    userInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            handleUserMessage();
+        openReportModalBtn.onclick = () => {
+            reportModal.style.display = 'flex';
         }
-    });
-
-    function addMessage(text, type, isRawJson = false) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', type);
-        if (isRawJson) {
-            messageDiv.innerHTML = `<pre>${text}</pre>`;
-        } else {
-            messageDiv.textContent = text;
+        cancelReportBtn.onclick = () => {
+            reportModal.style.display = 'none';
         }
-        chatWindow.appendChild(messageDiv);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-    }
-
-    async function handleUserMessage() {
-        const pregunta = userInput.value.trim();
-        if (!pregunta) return;
-
-        addMessage(pregunta, 'user-message');
-        userInput.value = '';
-        addMessage('Pensando...', 'ia-message', false);
-
-        try {
-            // 1. Llamar a la Edge Function para que la IA convierta la pregunta en un plan JSON
-            const { data: plan, error: planError } = await supabase.functions.invoke('chat-con-ia', {
-                body: { pregunta },
-            });
-
-            if (planError) throw planError;
-            if (plan.error) throw new Error(plan.error);
-            
-            // Mostramos el plan que generó la IA (muy útil para depurar)
-            document.querySelector('.ia-message:last-child').remove(); // Quita el "Pensando..."
-            addMessage('Plan de la IA:\n' + JSON.stringify(plan, null, 2), 'ia-message', true);
-
-            // 2. Construir y ejecutar la consulta de Supabase basada en el plan de la IA
-            let query = supabase.from(plan.tabla).select(plan.columnas);
-
-            if (plan.filtros && plan.filtros.length > 0) {
-                plan.filtros.forEach(filtro => {
-                    query = query[filtro.operador](filtro.columna, filtro.valor);
-                });
+        window.onclick = (event) => {
+            if (event.target == reportModal) {
+                reportModal.style.display = 'none';
             }
-            
-            if (plan.accion === 'count') {
-                query = query.select('*', { count: 'exact', head: true });
-            }
-
-            const { data: resultados, error: dbError, count } = await query;
-
-            if (dbError) throw dbError;
-
-            // 3. Mostrar los resultados al usuario
-            if (plan.accion === 'count') {
-                addMessage(`Respuesta: Se encontraron ${count} registros.`, 'ia-message');
-            } else if (resultados.length === 0) {
-                addMessage('No encontré resultados para tu consulta.', 'ia-message');
-            } else {
-                const respuestaFormateada = 'Resultados:\n' + JSON.stringify(resultados, null, 2);
-                addMessage(respuestaFormateada, 'ia-message', true);
-            }
-
-        } catch (error) {
-            console.error('Error en el proceso:', error);
-            document.querySelector('.ia-message:last-child').remove(); // Quita el "Pensando..."
-            addMessage(`Error: ${error.message}`, 'error-message');
         }
-    }
-</script>
+
+        // Lógica para el gráfico de ejemplo
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        const mainChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
+                datasets: [{
+                    label: 'Registros',
+                    data: [120, 190, 30, 50, 200],
+                    backgroundColor: 'rgba(0, 90, 156, 0.7)',
+                }, {
+                    label: 'Recibidos',
+                    data: [80, 150, 100, 180, 90],
+                    backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
 
 </body>
 </html>
