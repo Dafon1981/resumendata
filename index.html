@@ -184,52 +184,130 @@
     </div>
 
     <script>
-        // En el próximo paso, aquí irá toda la lógica de JavaScript
-        // para conectar con Supabase, generar gráficos y reportes.
-        
-        // Lógica básica para abrir y cerrar el modal
+        // --- ¡AQUÍ EMPIEZA LA CORRECCIÓN! ---
+
+        // 1. CONFIGURACIÓN DE SUPABASE
+        const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY );
+
+        // 2. ELEMENTOS DEL DOM
         const reportModal = document.getElementById('reportModal');
         const openReportModalBtn = document.getElementById('openReportModal');
         const cancelReportBtn = document.getElementById('cancelReport');
+        const generateReportBtn = document.getElementById('generateReport');
+        const dateRangeDisplay = document.getElementById('date-range-display');
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        let mainChart; // La declaramos aquí para poder destruirla y recrearla
 
-        openReportModalBtn.onclick = () => {
-            reportModal.style.display = 'flex';
+        // 3. LÓGICA DE LA APLICACIÓN
+        document.addEventListener('DOMContentLoaded', () => {
+            // Lógica para abrir y cerrar el modal
+            openReportModalBtn.onclick = () => { reportModal.style.display = 'flex'; };
+            cancelReportBtn.onclick = () => { reportModal.style.display = 'none'; };
+            window.onclick = (event) => {
+                if (event.target == reportModal) {
+                    reportModal.style.display = 'none';
+                }
+            };
+
+            // Cargar datos de la semana actual al iniciar
+            loadChartDataForCurrentWeek();
+
+            // Listener para el botón de generar reporte
+            generateReportBtn.onclick = handleGenerateReport;
+        });
+
+        // Función para cargar los datos del gráfico
+        async function loadChartData(startDate, endDate) {
+            try {
+                const { data, error } = await supabase
+                    .from('data_reportes')
+                    .select('fecha, nro_registro, nro_ingreso')
+                    .gte('fecha', startDate)
+                    .lte('fecha', endDate)
+                    .order('fecha', { ascending: true });
+
+                if (error) throw error;
+
+                // Procesar datos para el gráfico
+                const labels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+                const registrosData = Array(7).fill(0);
+                const ingresosData = Array(7).fill(0);
+
+                data.forEach(item => {
+                    const dayOfWeek = new Date(item.fecha + 'T00:00:00').getDay(); // Domingo=0, Lunes=1...
+                    const dayIndex = (dayOfWeek === 0) ? 6 : dayOfWeek - 1; // Ajustar para que Lunes sea 0
+                    registrosData[dayIndex] += item.nro_registro || 0;
+                    ingresosData[dayIndex] += item.nro_ingreso || 0;
+                });
+                
+                // Actualizar el título del rango de fechas
+                const formatDate = (dateStr) => new Date(dateStr + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+                dateRangeDisplay.textContent = `Semana: ${formatDate(startDate)} - ${formatDate(endDate)}`;
+
+                // Destruir el gráfico anterior si existe y crear uno nuevo
+                if (mainChart) {
+                    mainChart.destroy();
+                }
+                mainChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Registros',
+                            data: registrosData,
+                            backgroundColor: 'rgba(0, 90, 156, 0.7)',
+                        }, {
+                            label: 'Recibidos',
+                            data: ingresosData,
+                            backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error al cargar datos del gráfico:', error);
+                alert('No se pudieron cargar los datos para el gráfico.');
+            }
         }
-        cancelReportBtn.onclick = () => {
+
+        // Función para obtener la semana actual y cargar los datos
+        function loadChartDataForCurrentWeek() {
+            const hoy = new Date();
+            const diaSemana = hoy.getDay(); // Domingo=0, Lunes=1...
+            const primerDia = new Date(hoy);
+            // Si es domingo (0), retrocedemos 6 días. Si es lunes (1), 0 días. Si es martes (2), 1 día...
+            const diff = (diaSemana === 0) ? 6 : diaSemana - 1;
+            primerDia.setDate(hoy.getDate() - diff);
+
+            const ultimoDia = new Date(primerDia);
+            ultimoDia.setDate(primerDia.getDate() + 6);
+
+            const toISO = (date) => date.toISOString().split('T')[0];
+            loadChartData(toISO(primerDia), toISO(ultimoDia));
+        }
+
+        // Función para manejar la generación del reporte (próximo paso)
+        function handleGenerateReport() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            if (!startDate || !endDate) {
+                alert('Por favor, selecciona una fecha de inicio y una de término.');
+                return;
+            }
+            
+            alert(`Funcionalidad de reporte en desarrollo.\nSe generará un reporte desde ${startDate} hasta ${endDate}.`);
+            // Aquí irá la lógica para crear el PDF
             reportModal.style.display = 'none';
         }
-        window.onclick = (event) => {
-            if (event.target == reportModal) {
-                reportModal.style.display = 'none';
-            }
-        }
 
-        // Lógica para el gráfico de ejemplo
-        const ctx = document.getElementById('mainChart').getContext('2d');
-        const mainChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'],
-                datasets: [{
-                    label: 'Registros',
-                    data: [120, 190, 30, 50, 200],
-                    backgroundColor: 'rgba(0, 90, 156, 0.7)',
-                }, {
-                    label: 'Recibidos',
-                    data: [80, 150, 100, 180, 90],
-                    backgroundColor: 'rgba(0, 123, 255, 0.7)',
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
     </script>
 
 </body>
