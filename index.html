@@ -16,6 +16,7 @@
             --text-color: #333;
             --header-bg-color: #001f3f;
             --header-text-color: #ffffff;
+            --disabled-color: #6c757d;
         }
         body, html {
             margin: 0;
@@ -31,16 +32,45 @@
             padding: 20px;
         }
         .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             background-color: var(--header-bg-color);
             color: var(--header-text-color);
-            padding: 20px;
+            padding: 15px 20px;
             border-radius: 8px;
             margin-bottom: 20px;
-            text-align: center;
         }
         .header h1 {
-            font-size: 1.8em;
+            font-size: 1.5em;
             margin: 0;
+            text-align: center;
+            flex-grow: 1;
+        }
+        .nav-btn {
+            background: none;
+            border: 2px solid var(--header-text-color);
+            color: var(--header-text-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.5em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .nav-btn:disabled {
+            border-color: var(--disabled-color);
+            color: var(--disabled-color);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .nav-btn:not(:disabled):hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
         }
         .main-content {
             background-color: var(--surface-color);
@@ -54,21 +84,9 @@
             align-items: center;
             margin-bottom: 20px;
         }
-        .nav-btn {
-            background: none;
-            border: 2px solid var(--primary-color);
+        .week-navigator .nav-btn {
+            border-color: var(--primary-color);
             color: var(--primary-color);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            font-size: 1.5em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .nav-btn:hover {
-            background-color: var(--primary-color);
-            color: white;
         }
         .date-range {
             font-size: 1.2em;
@@ -81,6 +99,15 @@
             height: 45vh;
             width: 100%;
             margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .no-data-label {
+            display: none; /* Oculto por defecto */
+            font-size: 1.2em;
+            color: #999;
+            font-weight: 500;
         }
         .controls-footer {
             display: flex;
@@ -184,7 +211,9 @@
 
     <div class="app-container">
         <header class="header">
-            <h1>Recepción de Emergencia</h1>
+            <button class="nav-btn" id="prevAreaBtn" disabled>‹</button>
+            <h1 id="areaTitle">Recepción de Emergencia</h1>
+            <button class="nav-btn" id="nextAreaBtn" disabled>›</button>
         </header>
 
         <main class="main-content">
@@ -196,6 +225,7 @@
             
             <div class="chart-container">
                 <canvas id="mainChart"></canvas>
+                <div id="noDataLabel" class="no-data-label">No hay datos para este período</div>
             </div>
 
             <div class="controls-footer">
@@ -251,10 +281,13 @@
     const showIngresosCheck = document.getElementById('showIngresos');
     const prevWeekBtn = document.getElementById('prevWeekBtn');
     const nextWeekBtn = document.getElementById('nextWeekBtn');
-    const ctx = document.getElementById('mainChart').getContext('2d');
+    const areaTitle = document.getElementById('areaTitle');
+    const mainChartCanvas = document.getElementById('mainChart');
+    const noDataLabel = document.getElementById('noDataLabel');
+    const ctx = mainChartCanvas.getContext('2d');
     let mainChart;
     let currentChartData = {};
-    let currentStartDate; // Guardará el inicio de la semana actual
+    let currentStartDate;
 
     // 3. LÓGICA DE LA APLICACIÓN
     document.addEventListener('DOMContentLoaded', () => {
@@ -263,12 +296,11 @@
         cancelReportBtn.onclick = () => { reportModal.style.display = 'none'; };
         window.onclick = (event) => { if (event.target == reportModal) reportModal.style.display = 'none'; };
 
-        // Cargar datos de la semana inicial (20-24 Abr 2026)
-        // Nota: El 20 de abril de 2026 es Lunes.
+        // Semana inicial (20-24 Abr 2026)
         currentStartDate = new Date('2026-04-20T00:00:00');
         loadDataForWeek(currentStartDate);
 
-        // Listeners para los checkboxes y botones de navegación
+        // Listeners
         showRegistrosCheck.addEventListener('change', updateChartVisibility);
         showIngresosCheck.addEventListener('change', updateChartVisibility);
         prevWeekBtn.addEventListener('click', () => navigateWeeks(-7));
@@ -276,13 +308,11 @@
         generateReportBtn.onclick = handleGenerateReport;
     });
 
-    // Función para navegar entre semanas
     function navigateWeeks(days) {
         currentStartDate.setDate(currentStartDate.getDate() + days);
         loadDataForWeek(currentStartDate);
     }
 
-    // Función para cargar datos para una semana específica
     function loadDataForWeek(startDate) {
         const endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + 4); // Lunes a Viernes
@@ -290,12 +320,13 @@
         loadChartData(toISO(startDate), toISO(endDate));
     }
 
-    // Función principal para cargar y procesar datos
     async function loadChartData(startDate, endDate) {
         try {
+            const area = areaTitle.textContent; // Obtiene el área del título
             const { data, error } = await supabase
                 .from('data_reportes')
                 .select('fecha, nro_registro, nro_ingreso')
+                .eq('area', area)
                 .gte('fecha', startDate)
                 .lte('fecha', endDate)
                 .order('fecha', { ascending: true });
@@ -305,22 +336,33 @@
             const labels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
             const registrosData = Array(5).fill(0);
             const ingresosData = Array(5).fill(0);
+            let totalDataPoints = 0;
 
             data.forEach(item => {
                 const dayOfWeek = new Date(item.fecha + 'T00:00:00').getDay();
                 const dayIndex = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
-                if (dayIndex < 5) { // Solo consideramos Lunes a Viernes
+                if (dayIndex < 5) {
                     registrosData[dayIndex] += item.nro_registro || 0;
                     ingresosData[dayIndex] += item.nro_ingreso || 0;
+                    totalDataPoints += (item.nro_registro || 0) + (item.nro_ingreso || 0);
                 }
             });
             
             currentChartData = { labels, registrosData, ingresosData };
             
             const formatDate = (dateStr) => new Date(dateStr + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-            dateRangeDisplay.textContent = `Semana: ${formatDate(startDate)} - ${formatDate(endDate)}`;
+            dateRangeDisplay.textContent = `${formatDate(startDate)} - ${formatDate(endDate)}`;
 
-            updateChartVisibility();
+            // Mostrar u ocultar el label de "No hay datos"
+            if (totalDataPoints === 0) {
+                noDataLabel.style.display = 'block';
+                mainChartCanvas.style.display = 'none';
+                if (mainChart) mainChart.destroy();
+            } else {
+                noDataLabel.style.display = 'none';
+                mainChartCanvas.style.display = 'block';
+                updateChartVisibility();
+            }
 
         } catch (error) {
             console.error('Error al cargar datos del gráfico:', error);
@@ -328,9 +370,8 @@
         }
     }
 
-    // Función para dibujar/actualizar el gráfico
     function updateChartVisibility() {
-        if (!currentChartData.labels) return;
+        if (!currentChartData.labels || mainChartCanvas.style.display === 'none') return;
 
         const datasets = [];
         if (showRegistrosCheck.checked) {
@@ -364,7 +405,6 @@
         });
     }
 
-    // Placeholder para la función de reporte
     function handleGenerateReport() {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
