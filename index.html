@@ -16,7 +16,6 @@
             --text-color: #333;
             --header-bg-color: #001f3f;
             --header-text-color: #ffffff;
-            --disabled-color: #ced4da;
         }
         body, html {
             margin: 0;
@@ -32,44 +31,16 @@
             padding: 20px;
         }
         .header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             background-color: var(--header-bg-color);
             color: var(--header-text-color);
             padding: 20px;
             border-radius: 8px;
             margin-bottom: 20px;
+            text-align: center;
         }
         .header h1 {
             font-size: 1.8em;
-            margin: 0 0 15px 0;
-        }
-        .area-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .area-btn {
-            padding: 8px 16px;
-            border: 2px solid var(--header-text-color);
-            background-color: transparent;
-            color: var(--header-text-color);
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        .area-btn.active {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-        .area-btn:disabled {
-            border-color: var(--disabled-color);
-            color: var(--disabled-color);
-            cursor: not-allowed;
-            opacity: 0.6;
+            margin: 0;
         }
         .main-content {
             background-color: var(--surface-color);
@@ -77,17 +48,48 @@
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
-        .controls {
+        .week-navigator {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 20px;
+        }
+        .nav-btn {
+            background: none;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.5em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .nav-btn:hover {
+            background-color: var(--primary-color);
+            color: white;
         }
         .date-range {
             font-size: 1.2em;
             font-weight: 500;
+            text-align: center;
+            flex-grow: 1;
+        }
+        .chart-container {
+            position: relative;
+            height: 45vh;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .controls-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+            flex-wrap: wrap;
+            gap: 20px;
         }
         .filters {
             display: flex;
@@ -103,17 +105,6 @@
             height: 18px;
             cursor: pointer;
         }
-        .chart-container {
-            position: relative;
-            height: 45vh;
-            width: 100%;
-        }
-        .report-button-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 999;
-        }
         .btn {
             padding: 12px 25px;
             border: none;
@@ -122,7 +113,6 @@
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         .btn-primary {
             background-color: var(--primary-color);
@@ -130,7 +120,6 @@
         }
         .btn-primary:hover {
             background-color: #004a80;
-            transform: translateY(-2px);
         }
         .btn-secondary {
             background-color: #6c757d;
@@ -193,24 +182,23 @@
 </head>
 <body>
 
-    <!-- Botón de Reporte flotante -->
-    <div class="report-button-container">
-        <button class="btn btn-primary" id="openReportModal">Reporte</button>
-    </div>
-
     <div class="app-container">
         <header class="header">
             <h1>Recepción de Emergencia</h1>
-            <div class="area-buttons">
-                <button class="area-btn active" data-area="Recepcion Emergencia">Recepción Emergencia</button>
-                <button class="area-btn" data-area="Area 2" disabled>Área 2</button>
-                <button class="area-btn" data-area="Area 3" disabled>Área 3</button>
-            </div>
         </header>
 
         <main class="main-content">
-            <div class="controls">
+            <div class="week-navigator">
+                <button class="nav-btn" id="prevWeekBtn">‹</button>
                 <div class="date-range" id="date-range-display">Cargando...</div>
+                <button class="nav-btn" id="nextWeekBtn">›</button>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="mainChart"></canvas>
+            </div>
+
+            <div class="controls-footer">
                 <div class="filters">
                     <div class="filter-group">
                         <input type="checkbox" id="showRegistros" checked>
@@ -221,9 +209,7 @@
                         <label for="showIngresos">Ingreso C.C.</label>
                     </div>
                 </div>
-            </div>
-            <div class="chart-container">
-                <canvas id="mainChart"></canvas>
+                <button class="btn btn-primary" id="openReportModal">Reporte</button>
             </div>
         </main>
     </div>
@@ -249,7 +235,6 @@
 
     <!-- Contenedor para el reporte imprimible (inicialmente oculto) -->
     <div id="printable-report" style="display:none;"></div>
-
 <script>
     // 1. CONFIGURACIÓN DE SUPABASE
     const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
@@ -264,9 +249,12 @@
     const dateRangeDisplay = document.getElementById('date-range-display');
     const showRegistrosCheck = document.getElementById('showRegistros');
     const showIngresosCheck = document.getElementById('showIngresos');
+    const prevWeekBtn = document.getElementById('prevWeekBtn');
+    const nextWeekBtn = document.getElementById('nextWeekBtn');
     const ctx = document.getElementById('mainChart').getContext('2d');
     let mainChart;
-    let currentChartData = {}; // Almacenará los datos actuales para no pedirlos de nuevo
+    let currentChartData = {};
+    let currentStartDate; // Guardará el inicio de la semana actual
 
     // 3. LÓGICA DE LA APLICACIÓN
     document.addEventListener('DOMContentLoaded', () => {
@@ -275,40 +263,56 @@
         cancelReportBtn.onclick = () => { reportModal.style.display = 'none'; };
         window.onclick = (event) => { if (event.target == reportModal) reportModal.style.display = 'none'; };
 
-        // Cargar datos de la semana actual al iniciar
-        loadDataForCurrentWeek();
+        // Cargar datos de la semana inicial (20-24 Abr 2026)
+        // Nota: El 20 de abril de 2026 es Lunes.
+        currentStartDate = new Date('2026-04-20T00:00:00');
+        loadDataForWeek(currentStartDate);
 
-        // Listeners para los checkboxes
+        // Listeners para los checkboxes y botones de navegación
         showRegistrosCheck.addEventListener('change', updateChartVisibility);
         showIngresosCheck.addEventListener('change', updateChartVisibility);
-        
-        // Listener para el botón de generar reporte (aún en desarrollo)
+        prevWeekBtn.addEventListener('click', () => navigateWeeks(-7));
+        nextWeekBtn.addEventListener('click', () => navigateWeeks(7));
         generateReportBtn.onclick = handleGenerateReport;
     });
 
+    // Función para navegar entre semanas
+    function navigateWeeks(days) {
+        currentStartDate.setDate(currentStartDate.getDate() + days);
+        loadDataForWeek(currentStartDate);
+    }
+
+    // Función para cargar datos para una semana específica
+    function loadDataForWeek(startDate) {
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 4); // Lunes a Viernes
+        const toISO = (date) => date.toISOString().split('T')[0];
+        loadChartData(toISO(startDate), toISO(endDate));
+    }
+
     // Función principal para cargar y procesar datos
-    async function loadChartData(startDate, endDate, area) {
+    async function loadChartData(startDate, endDate) {
         try {
             const { data, error } = await supabase
                 .from('data_reportes')
-                .select('fecha, nro_registro, nro_ingreso, area')
-                .eq('area', area) // Filtra por el área activa
+                .select('fecha, nro_registro, nro_ingreso')
                 .gte('fecha', startDate)
                 .lte('fecha', endDate)
                 .order('fecha', { ascending: true });
 
             if (error) throw error;
 
-            // Procesar y almacenar datos
-            const labels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-            const registrosData = Array(7).fill(0);
-            const ingresosData = Array(7).fill(0);
+            const labels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+            const registrosData = Array(5).fill(0);
+            const ingresosData = Array(5).fill(0);
 
             data.forEach(item => {
                 const dayOfWeek = new Date(item.fecha + 'T00:00:00').getDay();
                 const dayIndex = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
-                registrosData[dayIndex] += item.nro_registro || 0;
-                ingresosData[dayIndex] += item.nro_ingreso || 0;
+                if (dayIndex < 5) { // Solo consideramos Lunes a Viernes
+                    registrosData[dayIndex] += item.nro_registro || 0;
+                    ingresosData[dayIndex] += item.nro_ingreso || 0;
+                }
             });
             
             currentChartData = { labels, registrosData, ingresosData };
@@ -316,7 +320,6 @@
             const formatDate = (dateStr) => new Date(dateStr + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
             dateRangeDisplay.textContent = `Semana: ${formatDate(startDate)} - ${formatDate(endDate)}`;
 
-            // Dibujar el gráfico con la visibilidad actual
             updateChartVisibility();
 
         } catch (error) {
@@ -325,9 +328,9 @@
         }
     }
 
-    // Función para dibujar/actualizar el gráfico basándose en los checkboxes
+    // Función para dibujar/actualizar el gráfico
     function updateChartVisibility() {
-        if (!currentChartData.labels) return; // No hacer nada si no hay datos
+        if (!currentChartData.labels) return;
 
         const datasets = [];
         if (showRegistrosCheck.checked) {
@@ -359,23 +362,6 @@
                 scales: { y: { beginAtZero: true } }
             }
         });
-    }
-
-    // Función para obtener la semana actual y cargar los datos
-    function loadDataForCurrentWeek() {
-        const hoy = new Date();
-        const diaSemana = hoy.getDay();
-        const primerDia = new Date(hoy);
-        const diff = (diaSemana === 0) ? 6 : diaSemana - 1;
-        primerDia.setDate(hoy.getDate() - diff);
-        const ultimoDia = new Date(primerDia);
-        ultimoDia.setDate(primerDia.getDate() + 6);
-        const toISO = (date) => date.toISOString().split('T')[0];
-        
-        // Obtener el área activa (por ahora, siempre la primera)
-        const activeArea = document.querySelector('.area-btn.active').dataset.area;
-        
-        loadChartData(toISO(primerDia), toISO(ultimoDia), activeArea);
     }
 
     // Placeholder para la función de reporte
