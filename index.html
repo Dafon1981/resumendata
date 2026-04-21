@@ -3,404 +3,301 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ResumenData - Recepción de Emergencia</title>
-      <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
+    <title>Resumen de Datos - Recepción</title>
+    <!-- Librerías de Supabase y Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
     <style>
         :root {
-            --primary-color: #005A9C;
+            --primary-color: #001f3f;
             --secondary-color: #007bff;
-            --background-color: #f0f2f5;
+            --bg-color: #f0f2f5;
             --surface-color: #ffffff;
             --text-color: #333;
-            --header-bg-color: #001f3f;
-            --header-text-color: #ffffff;
-            --disabled-color: #6c757d;
+            --border-color: #dee2e6;
+            --registro-color: #007bff; /* Azul */
+            --ingreso-color: #28a745;  /* Verde */
         }
-        body, html {
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-color );
             margin: 0;
-            padding: 0;
-            width: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--background-color );
-            color: var(--text-color);
+            padding: 20px;
         }
         .app-container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
         }
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: var(--header-bg-color);
-            color: var(--header-text-color);
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            padding: 1rem 1.5rem;
+            background-color: var(--primary-color);
+            color: white;
         }
-        .header h1 {
-            font-size: 1.5em;
-            margin: 0;
-            text-align: center;
-            flex-grow: 1;
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 600;
         }
-        .nav-btn {
+        .nav-button {
             background: none;
-            border: 2px solid var(--header-text-color);
-            color: var(--header-text-color);
+            border: 1px solid rgba(255,255,255,0.5);
+            color: white;
+            font-size: 1.5rem;
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            font-size: 1.5em;
-            font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .nav-btn:disabled {
-            border-color: var(--disabled-color);
-            color: var(--disabled-color);
-            cursor: not-allowed;
-            opacity: 0.5;
-        }
-        .nav-btn:not(:disabled):hover {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
+            opacity: 0.5; /* Desactivados por ahora */
         }
         .main-content {
-            background-color: var(--surface-color);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 1.5rem;
         }
-        .week-navigator {
+        .chart-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 1rem;
         }
-        .week-navigator .nav-btn {
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-        }
-        .date-range {
-            font-size: 1.2em;
+        .date-range-display {
+            font-size: 1.2rem;
             font-weight: 500;
-            text-align: center;
-            flex-grow: 1;
         }
         .chart-container {
             position: relative;
-            height: 45vh;
-            width: 100%;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            height: 60vh;
+            min-height: 300px;
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 8px;
         }
-        .no-data-label {
-            display: none; /* Oculto por defecto */
-            font-size: 1.2em;
-            color: #999;
-            font-weight: 500;
-        }
-        .controls-footer {
+        .footer {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-top: 20px;
-            border-top: 1px solid #e9ecef;
-            flex-wrap: wrap;
-            gap: 20px;
+            padding: 1rem 1.5rem;
+            background-color: #f8f9fa;
+            border-top: 1px solid var(--border-color);
         }
-        .filters {
-            display: flex;
-            gap: 20px;
-        }
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .filter-group input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
+        .checkbox-group label {
+            margin-right: 1.5rem;
             cursor: pointer;
         }
-        .btn {
-            padding: 12px 25px;
+        .report-button {
+            padding: 0.6rem 1.2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            background-color: var(--secondary-color);
+            color: white;
             border: none;
             border-radius: 6px;
-            font-size: 1em;
-            font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s ease;
         }
-        .btn-primary {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        .btn-primary:hover {
-            background-color: #004a80;
-        }
-        .btn-secondary {
-            background-color: #6c757d;
-            color: white;
-        }
-        .btn-secondary:hover {
-            background-color: #5a6268;
-        }
-
-        /* Estilos del Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.6);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: var(--surface-color);
-            padding: 30px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-        .modal-header {
-            font-size: 1.3em;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-        .form-group input[type="date"] {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 1em;
-        }
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 20px;
-        }
+        /* Estilos del Modal (sin cambios) */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { background-color: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 400px; }
+        .modal-content h2 { margin-top: 0; }
+        .modal-content .form-group { margin-bottom: 1rem; }
+        .modal-content label { display: block; margin-bottom: 0.5rem; }
+        .modal-content input { width: 100%; padding: 0.5rem; box-sizing: border-box; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem; }
+        .modal-buttons button { padding: 0.6rem 1.2rem; border-radius: 6px; border: none; cursor: pointer; }
+        .btn-primary { background-color: var(--secondary-color); color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
     </style>
 </head>
 <body>
 
     <div class="app-container">
         <header class="header">
-            <button class="nav-btn" id="prevAreaBtn" disabled>‹</button>
-            <h1 id="areaTitle">Recepción de Emergencia</h1>
-            <button class="nav-btn" id="nextAreaBtn" disabled>›</button>
+            <button class="nav-button" disabled>‹</button>
+            <div class="header-title">Recepción de Emergencia</div>
+            <button class="nav-button" disabled>›</button>
         </header>
 
         <main class="main-content">
-            <div class="week-navigator">
-                <button class="nav-btn" id="prevWeekBtn">‹</button>
-                <div class="date-range" id="date-range-display">Cargando...</div>
-                <button class="nav-btn" id="nextWeekBtn">›</button>
+            <div class="chart-header">
+                <button class="nav-button" id="prevWeek">‹</button>
+                <div class="date-range-display" id="dateRange"></div>
+                <button class="nav-button" id="nextWeek">›</button>
             </div>
-            
             <div class="chart-container">
-                <canvas id="mainChart"></canvas>
-                <div id="noDataLabel" class="no-data-label">No hay datos para este período</div>
-            </div>
-
-            <div class="controls-footer">
-                <div class="filters">
-                    <div class="filter-group">
-                        <input type="checkbox" id="showRegistros" checked>
-                        <label for="showRegistros">Registros</label>
-                    </div>
-                    <div class="filter-group">
-                        <input type="checkbox" id="showIngresos" checked>
-                        <label for="showIngresos">Ingreso C.C.</label>
-                    </div>
-                </div>
-                <button class="btn btn-primary" id="openReportModal">Reporte</button>
+                <canvas id="reportChart"></canvas>
             </div>
         </main>
+
+        <footer class="footer">
+            <div class="checkbox-group">
+                <label><input type="checkbox" id="showRegistros" checked> Registros</label>
+                <label><input type="checkbox" id="showIngresos" checked> Ingreso C.C.</label>
+            </div>
+            <button class="report-button" id="openReportModal">Reporte</button>
+        </footer>
     </div>
 
-    <!-- Modal para seleccionar fechas del reporte -->
+    <!-- Modal para el Reporte -->
     <div id="reportModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">Generar Reporte</div>
+            <h2>Generar Reporte</h2>
             <div class="form-group">
-                <label for="startDate">Fecha de Inicio</label>
+                <label for="startDate">Fecha de Inicio:</label>
                 <input type="date" id="startDate">
             </div>
             <div class="form-group">
-                <label for="endDate">Fecha de Término</label>
+                <label for="endDate">Fecha de Fin:</label>
                 <input type="date" id="endDate">
             </div>
-            <div class="modal-actions">
-                <button class="btn btn-secondary" id="cancelReport">Cancelar</button>
-                <button class="btn btn-primary" id="generateReport">Generar</button>
+            <div class="modal-buttons">
+                <button id="cancelReport" class="btn-secondary">Cancelar</button>
+                <button id="generateReport" class="btn-primary">Generar</button>
             </div>
         </div>
     </div>
 
-    <!-- Contenedor para el reporte imprimible (inicialmente oculto) -->
-    <div id="printable-report" style="display:none;"></div>
 <script>
-    // 1. CONFIGURACIÓN DE SUPABASE
+    // --- CONFIGURACIÓN ---
     const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzaWtscHh5ZWN0YmVreHZham53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2OTI1MjEsImV4cCI6MjA3NzI2ODUyMX0.mtQnqUrTmhmN1DQxOAUnGpizhYZobStHDH0cz_XfKGU';
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY );
 
-    // 2. ELEMENTOS DEL DOM
+    // --- ELEMENTOS DEL DOM ---
+    const dateRangeDisplay = document.getElementById('dateRange');
+    const chartCanvas = document.getElementById('reportChart');
+    const prevWeekBtn = document.getElementById('prevWeek');
+    const nextWeekBtn = document.getElementById('nextWeek');
+    const showRegistrosCheck = document.getElementById('showRegistros');
+    const showIngresosCheck = document.getElementById('showIngresos');
     const reportModal = document.getElementById('reportModal');
     const openReportModalBtn = document.getElementById('openReportModal');
     const cancelReportBtn = document.getElementById('cancelReport');
     const generateReportBtn = document.getElementById('generateReport');
-    const dateRangeDisplay = document.getElementById('date-range-display');
-    const showRegistrosCheck = document.getElementById('showRegistros');
-    const showIngresosCheck = document.getElementById('showIngresos');
-    const prevWeekBtn = document.getElementById('prevWeekBtn');
-    const nextWeekBtn = document.getElementById('nextWeekBtn');
-    const areaTitle = document.getElementById('areaTitle');
-    const mainChartCanvas = document.getElementById('mainChart');
-    const noDataLabel = document.getElementById('noDataLabel');
-    const ctx = mainChartCanvas.getContext('2d');
-    let mainChart;
-    let currentChartData = {};
-    let currentStartDate;
 
-    // 3. LÓGICA DE LA APLICACIÓN
+    let chartInstance = null;
+    let currentMonday = getStartOfWeek(new Date());
+
+    // --- LÓGICA PRINCIPAL ---
     document.addEventListener('DOMContentLoaded', () => {
-        // Lógica del Modal
-        openReportModalBtn.onclick = () => { reportModal.style.display = 'flex'; };
-        cancelReportBtn.onclick = () => { reportModal.style.display = 'none'; };
-        window.onclick = (event) => { if (event.target == reportModal) reportModal.style.display = 'none'; };
-
-        // Semana inicial (20-24 Abr 2026)
-        currentStartDate = new Date('2026-04-20T00:00:00');
-        loadDataForWeek(currentStartDate);
-
-        // Listeners
-        showRegistrosCheck.addEventListener('change', updateChartVisibility);
-        showIngresosCheck.addEventListener('change', updateChartVisibility);
-        prevWeekBtn.addEventListener('click', () => navigateWeeks(-7));
-        nextWeekBtn.addEventListener('click', () => navigateWeeks(7));
-        generateReportBtn.onclick = handleGenerateReport;
+        loadChartData();
+        prevWeekBtn.addEventListener('click', () => changeWeek(-7));
+        nextWeekBtn.addEventListener('click', () => changeWeek(7));
+        showRegistrosCheck.addEventListener('change', loadChartData);
+        showIngresosCheck.addEventListener('change', loadChartData);
+        openReportModalBtn.addEventListener('click', () => reportModal.style.display = 'flex');
+        cancelReportBtn.addEventListener('click', () => reportModal.style.display = 'none');
+        generateReportBtn.addEventListener('click', handleGenerateReport);
     });
 
-    function navigateWeeks(days) {
-        currentStartDate.setDate(currentStartDate.getDate() + days);
-        loadDataForWeek(currentStartDate);
+    function changeWeek(days) {
+        currentMonday.setDate(currentMonday.getDate() + days);
+        loadChartData();
     }
 
-    function loadDataForWeek(startDate) {
-        const endDate = new Date(startDate);
-        endDate.setDate(startDate.getDate() + 4); // Lunes a Viernes
-        const toISO = (date) => date.toISOString().split('T')[0];
-        loadChartData(toISO(startDate), toISO(endDate));
+    function getStartOfWeek(d) {
+        const date = new Date(d);
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Ajuste para que la semana empiece en Lunes
+        return new Date(date.setDate(diff));
     }
 
-    async function loadChartData(startDate, endDate) {
+    async function loadChartData() {
+        const fromDate = new Date(currentMonday);
+        const toDate = new Date(fromDate);
+        toDate.setDate(fromDate.getDate() + 4); // Lunes a Viernes
+
+        const fromString = fromDate.toISOString().split('T')[0];
+        const toString = toDate.toISOString().split('T')[0];
+
+        // Actualizar el texto del rango de fechas
+        dateRangeDisplay.textContent = `${fromDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} - ${toDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
+
         try {
-            const area = areaTitle.textContent; // Obtiene el área del título
+            // Consultar los datos de la semana actual
             const { data, error } = await supabase
                 .from('data_reportes')
                 .select('fecha, nro_registro, nro_ingreso')
-                .eq('area', area)
-                .gte('fecha', startDate)
-                .lte('fecha', endDate)
+                .gte('fecha', fromString)
+                .lte('fecha', toString)
                 .order('fecha', { ascending: true });
 
             if (error) throw error;
 
-            const labels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
-            const registrosData = Array(5).fill(0);
-            const ingresosData = Array(5).fill(0);
-            let totalDataPoints = 0;
-
-            data.forEach(item => {
-                const dayOfWeek = new Date(item.fecha + 'T00:00:00').getDay();
-                const dayIndex = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
-                if (dayIndex < 5) {
-                    registrosData[dayIndex] += item.nro_registro || 0;
-                    ingresosData[dayIndex] += item.nro_ingreso || 0;
-                    totalDataPoints += (item.nro_registro || 0) + (item.nro_ingreso || 0);
-                }
-            });
-            
-            currentChartData = { labels, registrosData, ingresosData };
-            
-            const formatDate = (dateStr) => new Date(dateStr + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
-            dateRangeDisplay.textContent = `${formatDate(startDate)} - ${formatDate(endDate)}`;
-
-            // Mostrar u ocultar el label de "No hay datos"
-            if (totalDataPoints === 0) {
-                noDataLabel.style.display = 'block';
-                mainChartCanvas.style.display = 'none';
-                if (mainChart) mainChart.destroy();
-            } else {
-                noDataLabel.style.display = 'none';
-                mainChartCanvas.style.display = 'block';
-                updateChartVisibility();
-            }
+            renderChart(data);
 
         } catch (error) {
-            console.error('Error al cargar datos del gráfico:', error);
-            alert('No se pudieron cargar los datos para el gráfico.');
+            console.error("Error cargando datos:", error);
+            chartCanvas.getContext('2d').fillText('Error al cargar los datos.', 10, 50);
         }
     }
 
-    function updateChartVisibility() {
-        if (!currentChartData.labels || mainChartCanvas.style.display === 'none') return;
+    function renderChart(data) {
+        const labels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+        const registrosData = new Array(5).fill(0);
+        const ingresosData = new Array(5).fill(0);
+
+        // Mapear los datos de la DB a los días de la semana
+        data.forEach(row => {
+            const dayOfWeek = new Date(row.fecha + 'T00:00:00').getDay(); // Domingo=0, Lunes=1...
+            const index = (dayOfWeek === 0) ? 6 : dayOfWeek - 1; // Lunes=0, Martes=1...
+            if (index >= 0 && index < 5) {
+                registrosData[index] = row.nro_registro || 0;
+                ingresosData[index] = row.nro_ingreso || 0;
+            }
+        });
+
+        if (chartInstance) {
+            chartInstance.destroy(); // Destruir gráfico anterior para evitar solapamientos
+        }
+
+        // Si no hay datos, mostrar mensaje
+        if (data.length === 0) {
+            const ctx = chartCanvas.getContext('2d');
+            ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+            ctx.font = '1.2rem Arial';
+            ctx.fillStyle = '#6c757d';
+            ctx.textAlign = 'center';
+            ctx.fillText('No hay datos para este período', chartCanvas.width / 2, chartCanvas.height / 2);
+            return;
+        }
 
         const datasets = [];
         if (showRegistrosCheck.checked) {
             datasets.push({
                 label: 'Registros',
-                data: currentChartData.registrosData,
-                backgroundColor: 'rgba(0, 90, 156, 0.7)',
+                data: registrosData,
+                backgroundColor: 'rgba(0, 123, 255, 0.7)', // Azul
+                borderColor: 'rgba(0, 123, 255, 1)',
+                borderWidth: 1
             });
         }
         if (showIngresosCheck.checked) {
             datasets.push({
                 label: 'Ingreso C.C.',
-                data: currentChartData.ingresosData,
-                backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                data: ingresosData,
+                backgroundColor: 'rgba(40, 167, 69, 0.7)', // Verde
+                borderColor: 'rgba(40, 167, 69, 1)',
+                borderWidth: 1
             });
         }
 
-        if (mainChart) mainChart.destroy();
-        
-        mainChart = new Chart(ctx, {
+        chartInstance = new Chart(chartCanvas, {
             type: 'bar',
             data: {
-                labels: currentChartData.labels,
+                labels: labels,
                 datasets: datasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true } }
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
             }
         });
     }
@@ -409,10 +306,10 @@
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         if (!startDate || !endDate) {
-            alert('Por favor, selecciona una fecha de inicio y una de término.');
+            alert('Por favor, seleccione ambas fechas.');
             return;
         }
-        alert(`Funcionalidad de reporte en desarrollo.\nSe generará un reporte desde ${startDate} hasta ${endDate}.`);
+        alert(`Funcionalidad pendiente: Generar un reporte desde ${startDate} hasta ${endDate}.`);
         reportModal.style.display = 'none';
     }
 </script>
