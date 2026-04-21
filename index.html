@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resumen de Datos - Recepción</title>
-   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
+    <!-- ¡LIBRERÍAS ACTUALIZADAS Y AÑADIDAS! -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <style>
         :root {
             --primary-color: #001f3f;
@@ -175,23 +177,20 @@
     const generateReportBtn = document.getElementById('generateReport');
 
     let chartInstance = null;
-    let currentMonday = getStartOfWeek(new Date()); // ¡CORREGIDO! Siempre empieza con la fecha de hoy
+    let currentMonday = getStartOfWeek(new Date());
 
     // --- LÓGICA PRINCIPAL ---
     document.addEventListener('DOMContentLoaded', () => {
+        // ¡NUEVO! Registrar el plugin de etiquetas globalmente
+        Chart.register(ChartDataLabels);
+
         loadChartData();
         prevWeekBtn.addEventListener('click', () => changeWeek(-7));
         nextWeekBtn.addEventListener('click', () => changeWeek(7));
         showRegistrosCheck.addEventListener('change', loadChartData);
         showIngresosCheck.addEventListener('change', loadChartData);
-        
-        // ¡CORREGIDO! El botón de reporte ahora sí funciona
-        openReportModalBtn.addEventListener('click', () => {
-            reportModal.style.display = 'flex';
-        });
-        cancelReportBtn.addEventListener('click', () => {
-            reportModal.style.display = 'none';
-        });
+        openReportModalBtn.addEventListener('click', () => reportModal.style.display = 'flex');
+        cancelReportBtn.addEventListener('click', () => reportModal.style.display = 'none');
         generateReportBtn.addEventListener('click', handleGenerateReport);
     });
 
@@ -200,20 +199,19 @@
         loadChartData();
     }
 
-    // ¡CORREGIDO! Lógica de cálculo de semana robusta
     function getStartOfWeek(d) {
         const date = new Date(d);
-        const day = date.getDay(); // Domingo = 0, Lunes = 1, ..., Sábado = 6
-        const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Ajuste para que la semana empiece en Lunes
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1);
         const monday = new Date(date.setDate(diff));
-        monday.setHours(0, 0, 0, 0); // Limpiar la hora para evitar errores de zona horaria
+        monday.setHours(0, 0, 0, 0);
         return monday;
     }
 
     async function loadChartData() {
         const fromDate = new Date(currentMonday);
         const toDate = new Date(fromDate);
-        toDate.setDate(fromDate.getDate() + 4); // Lunes a Viernes
+        toDate.setDate(fromDate.getDate() + 4);
 
         const fromString = fromDate.toISOString().split('T')[0];
         const toString = toDate.toISOString().split('T')[0];
@@ -229,9 +227,7 @@
                 .order('fecha', { ascending: true });
 
             if (error) throw error;
-
             renderChart(data);
-
         } catch (error) {
             console.error("Error cargando datos:", error);
             const ctx = chartCanvas.getContext('2d');
@@ -246,8 +242,8 @@
         const ingresosData = new Array(5).fill(0);
 
         data.forEach(row => {
-            const dayOfWeek = new Date(row.fecha + 'T00:00:00').getUTCDay(); // Usar getUTCDay para evitar problemas de zona horaria
-            const index = dayOfWeek - 1; // Lunes=0, Martes=1...
+            const dayOfWeek = new Date(row.fecha + 'T00:00:00').getUTCDay();
+            const index = dayOfWeek - 1;
             if (index >= 0 && index < 5) {
                 registrosData[index] = row.nro_registro || 0;
                 ingresosData[index] = row.nro_ingreso || 0;
@@ -261,7 +257,6 @@
         const ctx = chartCanvas.getContext('2d');
         ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
 
-        // ¡CORREGIDO! Lógica para mostrar "No hay datos"
         if (data.length === 0) {
             ctx.font = '1.2rem Arial';
             ctx.fillStyle = '#6c757d';
@@ -301,6 +296,20 @@
                 maintainAspectRatio: false,
                 scales: {
                     y: { beginAtZero: true }
+                },
+                // --- ¡NUEVA CONFIGURACIÓN PARA LAS ETIQUETAS! ---
+                plugins: {
+                    datalabels: {
+                        anchor: 'end', // Posición de la etiqueta (encima de la barra)
+                        align: 'end',   // Alineación de la etiqueta
+                        color: '#333', // Color del texto
+                        font: {
+                            weight: 'bold'
+                        },
+                        formatter: function(value) {
+                            return value > 0 ? value : ''; // No mostrar '0'
+                        }
+                    }
                 }
             }
         });
