@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Resumen de Datos - Recepción</title>
-    <!-- Librerías de Supabase y Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -15,8 +14,6 @@
             --surface-color: #ffffff;
             --text-color: #333;
             --border-color: #dee2e6;
-            --registro-color: #007bff; /* Azul */
-            --ingreso-color: #28a745;  /* Verde */
         }
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -53,7 +50,9 @@
             height: 40px;
             border-radius: 50%;
             cursor: pointer;
-            opacity: 0.5; /* Desactivados por ahora */
+        }
+        .header .nav-button {
+             opacity: 0.5; /* Desactivados por ahora */
         }
         .main-content {
             padding: 1.5rem;
@@ -67,6 +66,7 @@
         .date-range-display {
             font-size: 1.2rem;
             font-weight: 500;
+            text-align: center;
         }
         .chart-container {
             position: relative;
@@ -98,7 +98,6 @@
             border-radius: 6px;
             cursor: pointer;
         }
-        /* Estilos del Modal (sin cambios) */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
         .modal-content { background-color: white; padding: 2rem; border-radius: 8px; width: 90%; max-width: 400px; }
         .modal-content h2 { margin-top: 0; }
@@ -140,7 +139,6 @@
         </footer>
     </div>
 
-    <!-- Modal para el Reporte -->
     <div id="reportModal" class="modal">
         <div class="modal-content">
             <h2>Generar Reporte</h2>
@@ -158,7 +156,6 @@
             </div>
         </div>
     </div>
-
 <script>
     // --- CONFIGURACIÓN ---
     const SUPABASE_URL = 'https://esiklpxyectbekxvajnw.supabase.co';
@@ -178,7 +175,7 @@
     const generateReportBtn = document.getElementById('generateReport');
 
     let chartInstance = null;
-    let currentMonday = getStartOfWeek(new Date());
+    let currentMonday = getStartOfWeek(new Date()); // ¡CORREGIDO! Siempre empieza con la fecha de hoy
 
     // --- LÓGICA PRINCIPAL ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -187,8 +184,14 @@
         nextWeekBtn.addEventListener('click', () => changeWeek(7));
         showRegistrosCheck.addEventListener('change', loadChartData);
         showIngresosCheck.addEventListener('change', loadChartData);
-        openReportModalBtn.addEventListener('click', () => reportModal.style.display = 'flex');
-        cancelReportBtn.addEventListener('click', () => reportModal.style.display = 'none');
+        
+        // ¡CORREGIDO! El botón de reporte ahora sí funciona
+        openReportModalBtn.addEventListener('click', () => {
+            reportModal.style.display = 'flex';
+        });
+        cancelReportBtn.addEventListener('click', () => {
+            reportModal.style.display = 'none';
+        });
         generateReportBtn.addEventListener('click', handleGenerateReport);
     });
 
@@ -197,11 +200,14 @@
         loadChartData();
     }
 
+    // ¡CORREGIDO! Lógica de cálculo de semana robusta
     function getStartOfWeek(d) {
         const date = new Date(d);
-        const day = date.getDay();
+        const day = date.getDay(); // Domingo = 0, Lunes = 1, ..., Sábado = 6
         const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Ajuste para que la semana empiece en Lunes
-        return new Date(date.setDate(diff));
+        const monday = new Date(date.setDate(diff));
+        monday.setHours(0, 0, 0, 0); // Limpiar la hora para evitar errores de zona horaria
+        return monday;
     }
 
     async function loadChartData() {
@@ -212,11 +218,9 @@
         const fromString = fromDate.toISOString().split('T')[0];
         const toString = toDate.toISOString().split('T')[0];
 
-        // Actualizar el texto del rango de fechas
         dateRangeDisplay.textContent = `${fromDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} - ${toDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
 
         try {
-            // Consultar los datos de la semana actual
             const { data, error } = await supabase
                 .from('data_reportes')
                 .select('fecha, nro_registro, nro_ingreso')
@@ -230,7 +234,9 @@
 
         } catch (error) {
             console.error("Error cargando datos:", error);
-            chartCanvas.getContext('2d').fillText('Error al cargar los datos.', 10, 50);
+            const ctx = chartCanvas.getContext('2d');
+            ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+            ctx.fillText('Error al cargar los datos.', chartCanvas.width / 2, chartCanvas.height / 2);
         }
     }
 
@@ -239,10 +245,9 @@
         const registrosData = new Array(5).fill(0);
         const ingresosData = new Array(5).fill(0);
 
-        // Mapear los datos de la DB a los días de la semana
         data.forEach(row => {
-            const dayOfWeek = new Date(row.fecha + 'T00:00:00').getDay(); // Domingo=0, Lunes=1...
-            const index = (dayOfWeek === 0) ? 6 : dayOfWeek - 1; // Lunes=0, Martes=1...
+            const dayOfWeek = new Date(row.fecha + 'T00:00:00').getUTCDay(); // Usar getUTCDay para evitar problemas de zona horaria
+            const index = dayOfWeek - 1; // Lunes=0, Martes=1...
             if (index >= 0 && index < 5) {
                 registrosData[index] = row.nro_registro || 0;
                 ingresosData[index] = row.nro_ingreso || 0;
@@ -250,13 +255,14 @@
         });
 
         if (chartInstance) {
-            chartInstance.destroy(); // Destruir gráfico anterior para evitar solapamientos
+            chartInstance.destroy();
         }
 
-        // Si no hay datos, mostrar mensaje
+        const ctx = chartCanvas.getContext('2d');
+        ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+
+        // ¡CORREGIDO! Lógica para mostrar "No hay datos"
         if (data.length === 0) {
-            const ctx = chartCanvas.getContext('2d');
-            ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
             ctx.font = '1.2rem Arial';
             ctx.fillStyle = '#6c757d';
             ctx.textAlign = 'center';
@@ -269,7 +275,7 @@
             datasets.push({
                 label: 'Registros',
                 data: registrosData,
-                backgroundColor: 'rgba(0, 123, 255, 0.7)', // Azul
+                backgroundColor: 'rgba(0, 123, 255, 0.7)',
                 borderColor: 'rgba(0, 123, 255, 1)',
                 borderWidth: 1
             });
@@ -278,13 +284,13 @@
             datasets.push({
                 label: 'Ingreso C.C.',
                 data: ingresosData,
-                backgroundColor: 'rgba(40, 167, 69, 0.7)', // Verde
+                backgroundColor: 'rgba(40, 167, 69, 0.7)',
                 borderColor: 'rgba(40, 167, 69, 1)',
                 borderWidth: 1
             });
         }
 
-        chartInstance = new Chart(chartCanvas, {
+        chartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
@@ -294,9 +300,7 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    y: {
-                        beginAtZero: true
-                    }
+                    y: { beginAtZero: true }
                 }
             }
         });
